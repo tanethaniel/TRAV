@@ -68,6 +68,7 @@ Store in Vercel project env (and a local `.env.local`, git-ignored). Never commi
 | `WHATSAPP_BUSINESS_ACCOUNT_ID` | Meta | config | ② | WABA id. |
 | `RESEND_API_KEY` (optional) | Resend/SMTP | server | ① | Custom magic-link email deliverability. |
 | `SCRAPER_API_KEY` (optional) | 3rd-party fetch | server | ② | Only if using a scraping service for IG/TikTok. |
+| `GUMLOOP_API_KEY` (optional) | Gumloop | server | ② (scrape only) | Only if a Gumloop flow backs the Stage-1 IG/TikTok fetch. Not the pipeline. |
 | `APP_URL` | — | config | ①⑦ | Base URL for magic-link + share links. |
 
 ## 5. The fragile integration — IG/TikTok resolution (②)
@@ -80,6 +81,16 @@ arbitrary reel. v1 handles this as tiered, best-effort (design doc D2):
 - Options if best-effort proves too flaky: a managed fetch/scrape provider (adds `SCRAPER_API_KEY`
   + cost) or lean harder on the manual-reply path. Do **not** scrape logged-in save collections
   (ToS + fragility). Bulk import stays deferred.
+
+**The scrape step is pluggable — Gumloop is an optional Stage-1 backend, not the pipeline.**
+Only the IG/TikTok *fetch* is a candidate for an outside agent platform (Gumloop) or a dedicated
+scraping API. **LLM extraction, geocoding, chip persistence, and the WhatsApp `needs_review` loop
+stay in Trav's own code** — routing them through a no-code black box hurts latency/cost on the
+hot path and breaks eval-gating (T4) and idempotent-webhook ownership. The `PlatformResolver`
+seam (design doc D2 / task T2) is the swap point: `InstagramResolver`/`TikTokResolver` can be
+backed by self-hosted fetch, a scraping API, or a Gumloop flow, and swapped with zero blast
+radius. Pick the provider at build time (reliability + cost). Gumloop's clearest value is the
+**Concierge (C) validation phase** as a throwaway "link in → draft chip out" flow, not production.
 
 ## 6. Cost & rate-limit notes
 
